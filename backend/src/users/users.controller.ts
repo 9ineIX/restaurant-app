@@ -22,6 +22,22 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Post()
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Create user' })
+  @ApiResponse({ status: 201, description: 'User created' })
+  create(@Body() createUserDto: any) {
+    const userData = {
+      ...createUserDto,
+      Email: createUserDto.Email ?? createUserDto.email,
+      Password: createUserDto.Password ?? createUserDto.password,
+      IDRoles: Number(createUserDto.IDRoles),
+      IDJob_title: Number(createUserDto.IDJob_title),
+      BirthDate: createUserDto.BirthDate ? new Date(createUserDto.BirthDate) : undefined,
+    };
+    return this.usersService.create(userData);
+  }
+
   @Get()
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get all users' })

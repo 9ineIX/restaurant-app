@@ -16,8 +16,13 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'User successfully registered' })
   async register(@Body() registerDto: RegisterDto) {
     const userData = {
-      ...registerDto,
+      FIO: registerDto.FIO,
+      Email: registerDto.Email ?? (registerDto as any).email,
+      Password: registerDto.Password ?? (registerDto as any).password,
+      Phone: registerDto.Phone,
       BirthDate: new Date(registerDto.BirthDate),
+      IDRoles: Number(registerDto.IDRoles),
+      IDJob_title: Number(registerDto.IDJob_title),
     };
     return this.authService.register(userData);
   }

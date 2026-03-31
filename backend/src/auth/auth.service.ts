@@ -24,15 +24,36 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { email: user.Email, sub: user.IDUsers };
+    const userId = user?.IDUsers;
+    const userEmail = user?.Email ?? user?.email;
+
+    if (!userId && !userEmail) {
+      throw new UnauthorizedException('Invalid user payload');
+    }
+
+    const userWithRole =
+      user?.Role || user?.role
+        ? user
+        : await this.prisma.users.findUnique({
+            where: userId ? { IDUsers: userId } : { Email: userEmail },
+            include: { Role: true },
+          });
+
+    if (!userWithRole) {
+      throw new UnauthorizedException('User not found for login');
+    }
+
+    const roleName = userWithRole.role?.Name ?? userWithRole.Role?.Name;
+    const payload = { email: userWithRole.Email, sub: userWithRole.IDUsers };
+
     return {
       access_token: this.jwtService.sign(payload),
       refresh_token: this.jwtService.sign(payload, { expiresIn: '7d' }),
       user: {
-        id: user.IDUsers,
-        email: user.Email,
-        fio: user.FIO,
-        role: user.role.Name,
+        id: userWithRole.IDUsers,
+        email: userWithRole.Email,
+        fio: userWithRole.FIO,
+        role: roleName,
       },
     };
   }
@@ -60,4 +81,3 @@ export class AuthService {
     return { ...result, role: user.Role };
   }
 }
-
