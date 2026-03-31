@@ -89,7 +89,7 @@ export class OrdersService {
     const order = await this.prisma.orders.create({
       data: {
         IDUsers: createOrderDto.IDUsers,
-        IDStatus: 1, // CREATED status
+        IDStatus: 12, // CREATED status (ID=12 в базе данных)
         Price: totalPrice,
         Dishes: {
           connect: createOrderDto.IDDishes.map(id => ({ IDDishes: id })),

@@ -15,11 +15,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
   async register(@Body() registerDto: RegisterDto) {
-    const userData = {
-      ...registerDto,
-      BirthDate: new Date(registerDto.BirthDate),
-    };
-    return this.authService.register(userData);
+    try {
+      console.log('Raw request body received:', registerDto);
+      console.log('Registration attempt:', registerDto);
+      const userData = {
+        ...registerDto,
+        BirthDate: new Date(registerDto.BirthDate),
+      };
+      const result = await this.authService.register(userData);
+      console.log('Registration successful:', result);
+      return result;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   }
 
   @UseGuards(LocalAuthGuard)

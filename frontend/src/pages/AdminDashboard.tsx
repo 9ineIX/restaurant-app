@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, dishesApi, ingredientsApi, ordersApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { UserForm } from '../components/UserForm';
+import { IngredientForm } from '../components/IngredientForm';
+import { DishForm } from '../components/DishForm';
 import type { User, Dish, Ingredient, Order } from '../types';
 
 type TabType = 'users' | 'dishes' | 'ingredients' | 'orders';
@@ -9,6 +12,9 @@ type TabType = 'users' | 'dishes' | 'ingredients' | 'orders';
 export const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('users');
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [showIngredientForm, setShowIngredientForm] = useState(false);
+  const [showDishForm, setShowDishForm] = useState(false);
   const queryClient = useQueryClient();
 
   // Запросы данных
@@ -27,7 +33,7 @@ export const AdminDashboard: React.FC = () => {
     queryFn: () => ingredientsApi.getAll().then(res => res.data),
   });
 
-  const { data: orders, isLoading, refetch } = useQuery<Order[]>({
+  const { data: orders, refetch } = useQuery<Order[]>({
     queryKey: ['all-orders'],
     queryFn: () => ordersApi.getAllOrders().then(res => res.data),
     refetchInterval: 3000,
@@ -50,8 +56,17 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const createDishMutation = useMutation({
-    mutationFn: (dishData: any) => dishesApi.create(dishData),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dishes'] }),
+    mutationFn: (dishData: any) => {
+      console.log('Creating dish:', dishData);
+      return dishesApi.create(dishData);
+    },
+    onSuccess: (data) => {
+      console.log('Dish created successfully:', data);
+      queryClient.invalidateQueries({ queryKey: ['dishes'] });
+    },
+    onError: (error) => {
+      console.error('Error creating dish:', error);
+    }
   });
 
   const updateDishMutation = useMutation({
@@ -65,8 +80,17 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const createIngredientMutation = useMutation({
-    mutationFn: (ingredientData: any) => ingredientsApi.create(ingredientData),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ingredients'] }),
+    mutationFn: (ingredientData: any) => {
+      console.log('Creating ingredient:', ingredientData);
+      return ingredientsApi.create(ingredientData);
+    },
+    onSuccess: (data) => {
+      console.log('Ingredient created successfully:', data);
+      queryClient.invalidateQueries({ queryKey: ['ingredients'] });
+    },
+    onError: (error) => {
+      console.error('Error creating ingredient:', error);
+    }
   });
 
   const updateIngredientMutation = useMutation({
@@ -94,21 +118,22 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Пользователи</h2>
         <button
-          onClick={() => {
-            const userData = prompt('Введите данные пользователя (JSON):');
-            if (userData) {
-              try {
-                createUserMutation.mutate(JSON.parse(userData));
-              } catch (error) {
-                alert('Ошибка в формате JSON');
-              }
-            }
-          }}
+          onClick={() => setShowUserForm(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           Добавить пользователя
         </button>
       </div>
+      
+      {showUserForm && (
+        <UserForm
+          onSubmit={(userData) => {
+            createUserMutation.mutate(userData);
+            setShowUserForm(false);
+          }}
+          onCancel={() => setShowUserForm(false)}
+        />
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
@@ -183,21 +208,22 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Блюда</h2>
         <button
-          onClick={() => {
-            const dishData = prompt('Введите данные блюда (JSON):');
-            if (dishData) {
-              try {
-                createDishMutation.mutate(JSON.parse(dishData));
-              } catch (error) {
-                alert('Ошибка в формате JSON');
-              }
-            }
-          }}
+          onClick={() => setShowDishForm(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           Добавить блюдо
         </button>
       </div>
+      
+      {showDishForm && (
+        <DishForm
+          onSubmit={(dishData) => {
+            createDishMutation.mutate(dishData);
+            setShowDishForm(false);
+          }}
+          onCancel={() => setShowDishForm(false)}
+        />
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
@@ -274,21 +300,22 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Ингредиенты</h2>
         <button
-          onClick={() => {
-            const ingredientData = prompt('Введите данные ингредиента (JSON):');
-            if (ingredientData) {
-              try {
-                createIngredientMutation.mutate(JSON.parse(ingredientData));
-              } catch (error) {
-                alert('Ошибка в формате JSON');
-              }
-            }
-          }}
+          onClick={() => setShowIngredientForm(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           Добавить ингредиент
         </button>
       </div>
+      
+      {showIngredientForm && (
+        <IngredientForm
+          onSubmit={(ingredientData) => {
+            createIngredientMutation.mutate(ingredientData);
+            setShowIngredientForm(false);
+          }}
+          onCancel={() => setShowIngredientForm(false)}
+        />
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">

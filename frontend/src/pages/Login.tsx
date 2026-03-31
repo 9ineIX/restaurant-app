@@ -9,15 +9,23 @@ export const Login: React.FC = () => {
     FIO: '',
     Phone: '',
     BirthDate: '',
-    IDRoles: 1,
-    IDJob_title: 1,
   });
   
   const { login, register, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', { isLogin, email: formData.email });
+    
+    // Отправляем поля с правильными именами для backend
+    const submitData = {
+      FIO: formData.FIO,
+      Email: formData.email, // Отправляем Email с большой буквы
+      Password: formData.password, // Отправляем Password с большой буквы
+      Phone: formData.Phone,
+      BirthDate: formData.BirthDate,
+    };
+    
+    console.log('Form submitted:', { isLogin, email: formData.email, submitData });
     
     try {
       if (isLogin) {
@@ -25,9 +33,20 @@ export const Login: React.FC = () => {
         await login({ email: formData.email, password: formData.password });
         console.log('Login successful!');
       } else {
-        console.log('Attempting register...');
-        await register(formData);
+        console.log('Attempting register...', submitData);
+        await register(submitData);
         console.log('Register successful!');
+        alert('Регистрация прошла успешно! Теперь вы можете войти.');
+        // Переключаемся на форму входа после успешной регистрации
+        setIsLogin(true);
+        // Очищаем поля формы
+        setFormData({
+          email: submitData.Email,
+          password: '',
+          FIO: '',
+          Phone: '',
+          BirthDate: '',
+        });
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -35,11 +54,13 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    console.log('Field changed:', { name, value });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   return (
@@ -244,37 +265,6 @@ export const Login: React.FC = () => {
                     background: 'var(--surface)'
                   }}
                 />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="IDRoles" style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: 'var(--text-primary)',
-                  marginBottom: '8px'
-                }}>
-                  Роль
-                </label>
-                <select
-                  id="IDRoles"
-                  name="IDRoles"
-                  value={formData.IDRoles}
-                  onChange={handleChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '16px',
-                    transition: 'all 0.2s ease',
-                    background: 'var(--surface)'
-                  }}
-                >
-                  <option value={1}>CLIENT</option>
-                  <option value={2}>EMPLOYEE</option>
-                  <option value={3}>ADMIN</option>
-                </select>
               </div>
             </>
           )}

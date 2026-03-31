@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsNumber, IsDateString } from 'class-validator';
+import { IsEmail, IsString, IsDateString } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -15,10 +15,4 @@ export class RegisterDto {
 
   @IsDateString()
   BirthDate: string;
-
-  @IsNumber()
-  IDRoles: number;
-
-  @IsNumber()
-  IDJob_title: number;
 }

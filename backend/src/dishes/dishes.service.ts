@@ -33,8 +33,16 @@ export class DishesService {
   }
 
   async create(createDishDto: any) {
+    const { selectedIngredients, Ingredients, ...dishData } = createDishDto;
+    
+    // Временно создаем блюдо без ингредиентов
     return this.prisma.dishes.create({
-      data: createDishDto,
+      data: {
+        Name: dishData.Name,
+        Price: dishData.Price,
+        Description: dishData.Description,
+        IDDish_types: dishData.IDDish_types,
+      },
       include: {
         DishType: true,
         Ingredients: {

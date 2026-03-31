@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3002';
+const API_BASE_URL = 'http://localhost:3000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -44,10 +44,14 @@ api.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-  register: (userData: any) =>
-    api.post('/auth/register', userData),
+  login: (email: string, password: string) => {
+    console.log('API login request:', { email, password });
+    return api.post('/auth/login', { email, password });
+  },
+  register: (userData: any) => {
+    console.log('API register request:', userData);
+    return api.post('/auth/register', userData);
+  },
   getProfile: () => api.get('/auth/profile'),
 };
 
