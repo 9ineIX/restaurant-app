@@ -60,3 +60,4 @@ export class AuthService {
     return { ...result, role: user.Role };
   }
 }
+

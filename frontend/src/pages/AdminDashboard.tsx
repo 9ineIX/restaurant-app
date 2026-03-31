@@ -27,10 +27,10 @@ export const AdminDashboard: React.FC = () => {
     queryFn: () => ingredientsApi.getAll().then(res => res.data),
   });
 
-  const { data: orders, isLoading, refetch } = useQuery<Order[]>({
-    queryKey: ['all-orders'],
+  const { data: orders, refetch } = useQuery<Order[]>({
+    queryKey: ['all-orders'], 
     queryFn: () => ordersApi.getAllOrders().then(res => res.data),
-    refetchInterval: 3000,
+    refetchInterval: 3000, 
   });
 
   // Мутации для CRUD операций
