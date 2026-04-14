@@ -377,12 +377,25 @@ async function main() {
   ]);
 
   // Создание статусов заказов
-  const statuses = await Promise.all([
-    prisma.status.create({ data: { Name: 'CREATED' } }),
-    prisma.status.create({ data: { Name: 'COOKING' } }),
-    prisma.status.create({ data: { Name: 'READY' } }),
-    prisma.status.create({ data: { Name: 'COMPLETED' } }),
-  ]);
+   const statusData = [
+    { id: 1, name: 'CREATED' },
+    { id: 2, name: 'COOKING' },
+    { id: 3, name: 'READY' },
+    { id: 4, name: 'COMPLETED' },
+  ];
+
+  const statuses = await Promise.all(
+    statusData.map((s) =>
+      prisma.status.upsert({
+        where: { IDStatus: s.id },
+        update: {}, // Если запись есть, ничего не меняем
+        create: {
+          IDStatus: s.id, // Явно задаем ID
+          Name: s.name,
+        },
+      })
+    )
+  );
 
   console.log('База данных успешно заполнена!');
   console.log('Пользователи:');

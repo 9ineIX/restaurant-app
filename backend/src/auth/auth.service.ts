@@ -28,7 +28,7 @@ export class AuthService {
     
     // Загружаем пользователя с ролью
     const userWithRole = await this.prisma.users.findUnique({
-      where: { Email: user.email },
+      where: { Email: user.Email },
       include: { Role: true }
     });
 

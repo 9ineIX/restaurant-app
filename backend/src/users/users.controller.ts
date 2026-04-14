@@ -37,6 +37,14 @@ export class UsersController {
     return this.usersService.findById(req.user.IDUsers);
   }
 
+  @Post()
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Create user' })
+  @ApiResponse({ status: 201, description: 'User created' })
+  create(@Body() createUserDto: any) {
+    return this.usersService.create(createUserDto);
+  }
+
   @Get(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get user by id' })
