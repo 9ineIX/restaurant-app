@@ -8,103 +8,41 @@ interface OrderStatus {
 }
 
 const orderStatuses: OrderStatus[] = [
-  { id: 1, name: 'Заказ принят', icon: '📝', color: '#3b82f6' },
-  { id: 2, name: 'Готовится', icon: '👨‍🍳', color: '#f59e0b' },
-  { id: 3, name: 'Приготовлен', icon: '✅', color: '#10b981' },
-  { id: 4, name: 'Можете забирать', icon: '🎉', color: '#8b5cf6' }
+  { id: 1, name: 'Создан', icon: '📝', color: '#3b82f6' },
+  { id: 2, name: 'В обработке', icon: '👨‍🍳', color: '#f59e0b' },
+  { id: 3, name: 'Готов', icon: '✅', color: '#10b981' },
+  { id: 4, name: 'Выдан', icon: '🎉', color: '#8b5cf6' }
 ];
 
 interface OrderStatusBarSimpleProps {
-  isVisible?: boolean;
-  onClose?: () => void;
-  dishName?: string;
   currentStatus?: string;
+  dishName?: string;
 }
 
 export const OrderStatusBarSimple: React.FC<OrderStatusBarSimpleProps> = ({
-  isVisible = false,
-  onClose = () => {},
-  dishName = 'Ваше блюдо',
-  currentStatus: propCurrentStatus
+  currentStatus: propCurrentStatus,
+  dishName = 'Ваше блюдо'
 }) => {
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
 
-  // Если передан currentStatus, показываем статический статус
-  if (propCurrentStatus !== undefined) {
-    const statusIndex = orderStatuses.findIndex(s => s.name === propCurrentStatus);
-    const displayStatus = statusIndex >= 0 ? orderStatuses[statusIndex] : orderStatuses[0];
-    
-    return (
-      <div className="order-status-bar" style={{
-        padding: '8px 16px',
-        background: `linear-gradient(135deg, ${displayStatus.color}, ${displayStatus.color}dd)`,
-        color: 'white',
-        borderRadius: 'var(--radius-sm)',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '8px',
-        fontSize: '14px',
-        fontWeight: '600'
-      }}>
-        <span style={{ fontSize: '18px' }}>{displayStatus.icon}</span>
-        {displayStatus.name}
-      </div>
-    );
-  }
+  // Определяем текущий индекс статуса на основе реального статуса из БД
+  useEffect(() => {
+    if (propCurrentStatus) {
+      const statusIndex = orderStatuses.findIndex(s => s.name === propCurrentStatus);
+      if (statusIndex >= 0) {
+        setCurrentStatusIndex(statusIndex);
+        // Если статус "Выдан", показываем сообщение о завершении
+        if (propCurrentStatus === 'Выдан') {
+          setShowCompletion(true);
+        } else {
+          setShowCompletion(false);
+        }
+      }
+    }
+  }, [propCurrentStatus]);
 
   const currentStatus = orderStatuses[currentStatusIndex];
-
-  useEffect(() => {
-    if (!isVisible) {
-      setCurrentStatusIndex(0);
-      setShowCompletion(false);
-      return;
-    }
-
-    console.log('=== Starting simple status sequence ===');
-    console.log('Status 1:', orderStatuses[0].name);
-
-    // Статус 1: Заказ принят
-    const timer1 = setTimeout(() => {
-      console.log('Status 2:', orderStatuses[1].name);
-      setCurrentStatusIndex(1);
-    }, 3000);
-
-    // Статус 2: Готовится
-    const timer2 = setTimeout(() => {
-      console.log('Status 3:', orderStatuses[2].name);
-      setCurrentStatusIndex(2);
-    }, 6000);
-
-    // Статус 3: Приготовлен
-    const timer3 = setTimeout(() => {
-      console.log('Status 4:', orderStatuses[3].name);
-      setCurrentStatusIndex(3);
-    }, 9000);
-
-    // Статус 4: Можете забирать
-    const timer4 = setTimeout(() => {
-      console.log('Showing completion message');
-      setShowCompletion(true);
-    }, 12000);
-
-    // Автоматическое закрытие
-    const timer5 = setTimeout(() => {
-      console.log('Auto-closing');
-      onClose();
-    }, 17000);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-      clearTimeout(timer4);
-      clearTimeout(timer5);
-    };
-  }, [isVisible, onClose]);
-
-  if (!isVisible) return null;
 
   return (
     <div className="order-status-bar" style={{
@@ -176,23 +114,6 @@ export const OrderStatusBarSimple: React.FC<OrderStatusBarSimpleProps> = ({
               }}
             >
               ⌃
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '18px'
-              }}
-            >
-              ×
             </button>
           </div>
         </div>
@@ -315,14 +236,6 @@ export const OrderStatusBarSimple: React.FC<OrderStatusBarSimpleProps> = ({
               color: '#15803d'
             }}>
               Можете забирать {dishName}
-            </div>
-            <div style={{
-              fontSize: '12px',
-              color: '#15803d',
-              marginTop: '8px',
-              opacity: '0.8'
-            }}>
-              Окно автоматически закроется через 5 секунд
             </div>
           </div>
         )}

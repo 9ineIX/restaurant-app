@@ -16,11 +16,23 @@ async function main() {
   await prisma.roles.deleteMany();
   await prisma.job_title.deleteMany();
 
-  // Создание ролей
+  // Создание ролей с конкретными ID
   const roles = await Promise.all([
-    prisma.roles.create({ data: { Name: 'CLIENT' } }),
-    prisma.roles.create({ data: { Name: 'EMPLOYEE' } }),
-    prisma.roles.create({ data: { Name: 'ADMIN' } }),
+    prisma.roles.upsert({
+      where: { IDRoles: 1 },
+      update: {},
+      create: { IDRoles: 1, Name: 'CLIENT' }
+    }),
+    prisma.roles.upsert({
+      where: { IDRoles: 2 },
+      update: {},
+      create: { IDRoles: 2, Name: 'EMPLOYEE' }
+    }),
+    prisma.roles.upsert({
+      where: { IDRoles: 3 },
+      update: {},
+      create: { IDRoles: 3, Name: 'ADMIN' }
+    }),
   ]);
 
   // Создание должностей
@@ -378,10 +390,11 @@ async function main() {
 
   // Создание статусов заказов
    const statusData = [
-    { id: 1, name: 'CREATED' },
-    { id: 2, name: 'COOKING' },
-    { id: 3, name: 'READY' },
-    { id: 4, name: 'COMPLETED' },
+    { id: 1, name: 'Создан' },
+    { id: 2, name: 'В обработке' },
+    { id: 3, name: 'Готов' },
+    { id: 4, name: 'Выдан' },
+    { id: 5, name: 'Отменен' },
   ];
 
   const statuses = await Promise.all(

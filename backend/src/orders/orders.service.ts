@@ -116,9 +116,6 @@ export class OrdersService {
       },
     });
 
-    // Устанавливаем таймер для автоматического изменения статуса
-    this.scheduleOrderStatusUpdate(order.IDOrders);
-
     return order;
   }
 
@@ -156,59 +153,5 @@ export class OrdersService {
 
   async getStatuses() {
     return this.prisma.status.findMany();
-  }
-
-  // Метод для планирования изменения статуса заказа
-  private scheduleOrderStatusUpdate(orderId: number) {
-    // Через 30 секунд меняем статус на "В обработке"
-    setTimeout(async () => {
-      try {
-        await this.prisma.orders.update({
-          where: { IDOrders: orderId },
-          data: { IDStatus: 2 }, // В обработке
-        });
-        console.log(`Order ${orderId} status updated to "В обработке"`);
-      } catch (error) {
-        console.error('Error updating order status:', error);
-      }
-    }, 30000); // 30 секунд
-
-    // Еще через 30 секунд меняем на "Готов"
-    setTimeout(async () => {
-      try {
-        await this.prisma.orders.update({
-          where: { IDOrders: orderId },
-          data: { IDStatus: 3 }, // Готов
-        });
-        console.log(`Order ${orderId} status updated to "Готов"`);
-      } catch (error) {
-        console.error('Error updating order status:', error);
-      }
-    }, 60000); // 60 секунд
-
-    // Еще через 30 секунд меняем на "Выдан" и удаляем
-    setTimeout(async () => {
-      try {
-        await this.prisma.orders.update({
-          where: { IDOrders: orderId },
-          data: { IDStatus: 4 }, // Выдан
-        });
-        console.log(`Order ${orderId} status updated to "Выдан"`);
-        
-        // Через 10 секунд удаляем заказ (для демонстрации)
-        setTimeout(async () => {
-          try {
-            await this.prisma.orders.delete({
-              where: { IDOrders: orderId },
-            });
-            console.log(`Order ${orderId} deleted for demonstration`);
-          } catch (error) {
-            console.error('Error deleting order:', error);
-          }
-        }, 10000);
-      } catch (error) {
-        console.error('Error updating order status:', error);
-      }
-    }, 90000); // 90 секунд
   }
 }

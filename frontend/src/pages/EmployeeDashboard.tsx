@@ -2,18 +2,55 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
-import { OrderStatusBarSimple } from '../components/OrderStatusBarSimple';
 import type { Order } from '../types';
 
 export const EmployeeDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
+  // Стили
+  const headerStyle = {
+    background: '#ffffff',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    borderBottom: '1px solid #e9ecef'
+  };
+
+  const cardStyle = {
+    background: '#ffffff',
+    borderRadius: '16px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    padding: '24px',
+    marginBottom: '16px'
+  };
+
+  const filterButtonStyle = (isActive: boolean) => ({
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: 500,
+    border: isActive ? 'none' : '1px solid #e9ecef',
+    borderRadius: '8px',
+    background: isActive ? '#ff6b35' : '#ffffff',
+    color: isActive ? '#ffffff' : '#6c757d',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: isActive ? '0 2px 4px rgba(255, 107, 53, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
+  });
+
+  const actionButtonStyle = {
+    padding: '10px 20px',
+    fontSize: '14px',
+    fontWeight: 500,
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  };
+
   // Получаем все заказы
   const { data: orders, isLoading, refetch } = useQuery<Order[]>({
     queryKey: ['orders'],
     queryFn: () => ordersApi.getAllOrders().then(res => res.data),
-    refetchInterval: 3000, // Обновляем каждые 3 секунды для реального времени
+    refetchInterval: 3000,
   });
 
   // Фильтруем заказы по статусу
@@ -23,7 +60,7 @@ export const EmployeeDashboard: React.FC = () => {
   }) || [];
 
   // Получаем уникальные статусы для фильтров
-  const statuses = orders?.map(order => order.Status?.Name).filter(Boolean) as string[];
+  const statuses = Array.from(new Set(orders?.map(order => order.Status?.Name).filter(Boolean) as string[]));
 
   const handleStatusChange = async (orderId: number, newStatusId: number) => {
     try {
@@ -31,34 +68,59 @@ export const EmployeeDashboard: React.FC = () => {
       refetch();
     } catch (error) {
       console.error('Error updating order status:', error);
+      alert('Ошибка при обновлении статуса заказа');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Загрузка заказов...</div>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f8f9fa'
+      }}>
+        <div style={{ fontSize: '20px', color: '#6c757d' }}>Загрузка заказов...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{
+      minHeight: '100vh',
+      background: '#f8f9fa',
+      paddingBottom: '32px'
+    }}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      <header style={headerStyle}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Панель сотрудника</h1>
-              <p className="text-sm text-gray-600">Управление заказами</p>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0 }}>
+                Панель сотрудника
+              </h1>
+              <p style={{ fontSize: '14px', color: '#6c757d', margin: '4px 0 0 0' }}>
+                Управление заказами
+              </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '14px', color: '#6c757d' }}>
                 {user?.FIO} • {user?.Role?.Name || user?.role?.Name}
               </span>
               <button
                 onClick={logout}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                style={{
+                  padding: '8px 16px',
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 Выйти
               </button>
@@ -68,17 +130,13 @@ export const EmployeeDashboard: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
         {/* Фильтры */}
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-2">
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             <button
               onClick={() => setSelectedStatus('all')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                selectedStatus === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
+              style={filterButtonStyle(selectedStatus === 'all')}
             >
               Все заказы ({orders?.length || 0})
             </button>
@@ -86,11 +144,7 @@ export const EmployeeDashboard: React.FC = () => {
               <button
                 key={status}
                 onClick={() => setSelectedStatus(status)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedStatus === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
+                style={filterButtonStyle(selectedStatus === status)}
               >
                 {status} ({filteredOrders.filter(o => o.Status?.Name === status).length})
               </button>
@@ -99,86 +153,100 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
 
         {/* Список заказов */}
-        <div className="space-y-4">
-          {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-gray-500">Нет заказов для отображения</p>
-            </div>
-          ) : (
-            filteredOrders.map(order => (
-              <div key={order.IDOrders} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Заказ #{order.IDOrders}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Клиент: {order.User?.FIO}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Телефон: {order.User?.Phone || 'Не указан'}
-                      </p>
-                      <p className="text-lg font-medium text-gray-900 mt-2">
-                        Сумма: {order.Price} ₽
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <OrderStatusBarSimple currentStatus={order.Status?.Name || ''} />
-                    </div>
-                  </div>
-
-                  {/* Блюда в заказе */}
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Блюда:</h4>
-                    <div className="space-y-1">
-                      {order.Dishes?.map(dish => (
-                        <div key={dish.IDDishes} className="flex justify-between text-sm">
-                          <span className="text-gray-600">{dish.Name}</span>
-                          <span className="text-gray-900">{dish.Price} ₽</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Кнопки управления статусом */}
-                  <div className="flex gap-2">
-                    {order.Status?.Name === 'Создан' && (
-                      <button
-                        onClick={() => handleStatusChange(order.IDOrders, 2)} // В обработку
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
-                      >
-                        Принять в работу
-                      </button>
-                    )}
-                    {order.Status?.Name === 'В обработке' && (
-                      <button
-                        onClick={() => handleStatusChange(order.IDOrders, 3)} // Готов
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Отметить готовым
-                      </button>
-                    )}
-                    {order.Status?.Name === 'Готов' && (
-                      <button
-                        onClick={() => handleStatusChange(order.IDOrders, 4)} // Выдан
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Выдать клиенту
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleStatusChange(order.IDOrders, 5)} // Отменен
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      Отменить
-                    </button>
-                  </div>
+        {filteredOrders.length === 0 ? (
+          <div style={cardStyle}>
+            <p style={{ textAlign: 'center', color: '#6c757d', fontSize: '16px' }}>
+              Нет заказов для отображения
+            </p>
+          </div>
+        ) : (
+          filteredOrders.map(order => (
+            <div key={order.IDOrders} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#2c3e50', marginBottom: '8px' }}>
+                    Заказ #{order.IDOrders}
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>
+                    Клиент: {order.User?.FIO}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '8px' }}>
+                    Телефон: {order.User?.Phone || 'Не указан'}
+                  </p>
+                  <p style={{ fontSize: '18px', fontWeight: 500, color: '#2c3e50', marginTop: '8px' }}>
+                    Сумма: {order.Price} ₽
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    ...(order.Status?.Name === 'Готов' ? { background: '#dcfce7', color: '#166534' } :
+                        order.Status?.Name === 'В обработке' ? { background: '#fef9c3', color: '#854d0e' } :
+                        order.Status?.Name === 'Создан' ? { background: '#dbeafe', color: '#1e40af' } :
+                        order.Status?.Name === 'Отменен' ? { background: '#fee2e2', color: '#991b1b' } :
+                        { background: '#f3f4f6', color: '#374151' })
+                  }}>
+                    {order.Status?.Name}
+                  </span>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+
+              {/* Блюда в заказе */}
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 500, color: '#2c3e50', marginBottom: '8px' }}>
+                  Блюда:
+                </h4>
+                <div>
+                  {order.Dishes?.map(dish => (
+                    <div key={dish.IDDishes} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
+                      <span style={{ color: '#6c757d' }}>{dish.Name}</span>
+                      <span style={{ color: '#2c3e50', fontWeight: 500 }}>{dish.Price} ₽</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Кнопки управления статусом */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {order.Status?.Name === 'Создан' && (
+                  <button
+                    onClick={() => handleStatusChange(order.IDOrders, 2)}
+                    style={{ ...actionButtonStyle, background: '#f59e0b', color: 'white' }}
+                  >
+                    Принять в работу
+                  </button>
+                )}
+                {order.Status?.Name === 'В обработке' && (
+                  <button
+                    onClick={() => handleStatusChange(order.IDOrders, 3)}
+                    style={{ ...actionButtonStyle, background: '#10b981', color: 'white' }}
+                  >
+                    Отметить готовым
+                  </button>
+                )}
+                {order.Status?.Name === 'Готов' && (
+                  <button
+                    onClick={() => handleStatusChange(order.IDOrders, 4)}
+                    style={{ ...actionButtonStyle, background: '#3b82f6', color: 'white' }}
+                  >
+                    Выдать клиенту
+                  </button>
+                )}
+                {order.Status?.Name !== 'Отменен' && order.Status?.Name !== 'Выдан' && (
+                  <button
+                    onClick={() => handleStatusChange(order.IDOrders, 5)}
+                    style={{ ...actionButtonStyle, background: '#dc2626', color: 'white' }}
+                  >
+                    Отменить
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </main>
     </div>
   );

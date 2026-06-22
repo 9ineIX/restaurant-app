@@ -14,8 +14,7 @@ export const Constructor: React.FC = () => {
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [showAlternative, setShowAlternative] = useState(false);
-  const [showOrderStatus, setShowOrderStatus] = useState(false);
-  const [currentDishName, setCurrentDishName] = useState<string>('');
+  const [hideStatusBar, setHideStatusBar] = useState(false);
 
   // Получаем заказы пользователя
   const { data: userOrders, refetch: refetchOrders } = useQuery<Order[]>({
@@ -30,11 +29,8 @@ export const Constructor: React.FC = () => {
       ordersApi.create([dishId]).then(res => res.data),
     onSuccess: (data) => {
       console.log('Order created:', data);
-      // Показываем визуализацию статусов заказа
-      setShowOrderStatus(true);
       setSelectedIngredients([]);
       setMatchResult(null);
-      setCurrentDishName(data.Dishes[0]?.Name || 'Блюдо');
       
       // Обновляем список заказов
       refetchOrders();
@@ -98,14 +94,24 @@ export const Constructor: React.FC = () => {
     console.log('Extra ingredients confirmed:', includeExtra);
   };
 
-  const handleOrderStatusClose = () => {
-    setShowOrderStatus(false);
-  };
-
   const handleLogout = () => {
     logout();
     queryClient.clear();
   };
+
+  // Auto-hide status bar when order is Выдан or Отменен
+  React.useEffect(() => {
+    if (userOrders && userOrders.length > 0 && userOrders[0]?.Status?.Name === 'Выдан') {
+      const timer = setTimeout(() => {
+        setHideStatusBar(true);
+      }, 5000); // Hide after 5 seconds
+      return () => clearTimeout(timer);
+    } else if (userOrders && userOrders.length > 0 && userOrders[0]?.Status?.Name === 'Отменен') {
+      setHideStatusBar(true); // Hide immediately if cancelled
+    } else {
+      setHideStatusBar(false);
+    }
+  }, [userOrders]);
 
   return (
     <div className="constructor-container" style={{
@@ -308,11 +314,35 @@ export const Constructor: React.FC = () => {
       </div>
 
       {/* Визуализация статусов заказа */}
-      <OrderStatusBarSimple
-        isVisible={showOrderStatus}
-        onClose={handleOrderStatusClose}
-        dishName={currentDishName}
-      />
+      {userOrders && userOrders.length > 0 && userOrders[0]?.Status?.Name === 'Отменен' ? (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+          color: 'white',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          <span style={{ fontSize: '24px' }}>✕</span>
+          <div>
+            <div style={{ fontSize: '16px', fontWeight: 600 }}>Заказ отменен</div>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>Ваш заказ был отменен сотрудником</div>
+          </div>
+        </div>
+      ) : !hideStatusBar && userOrders && userOrders.length > 0 && userOrders[0]?.Dishes?.length > 0 && (
+        <OrderStatusBarSimple
+          currentStatus={userOrders[0]?.Status?.Name}
+          dishName={userOrders[0]?.Dishes[0]?.Name || 'Ваше блюдо'}
+        />
+      )}
     </div>
   );
 };

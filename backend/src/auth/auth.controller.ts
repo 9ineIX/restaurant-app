@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -14,6 +14,7 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
+  @ApiResponse({ status: 400, description: 'User already exists' })
   async register(@Body() registerDto: RegisterDto) {
     try {
       console.log('Raw request body received:', registerDto);
@@ -27,7 +28,11 @@ export class AuthController {
       return result;
     } catch (error) {
       console.error('Registration error:', error);
-      throw error;
+      // Return proper HTTP error response
+      if (error instanceof Error) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+      throw new HttpException('Ошибка регистрации', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

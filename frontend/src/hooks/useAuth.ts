@@ -16,9 +16,6 @@ export const useAuth = () => {
       localStorage.setItem('user', JSON.stringify(user));
       queryClient.setQueryData(['user'], user);
     },
-    onError: (error) => {
-      console.error('Login mutation error:', error);
-    },
   });
 
   const registerMutation = useMutation({

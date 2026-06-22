@@ -69,12 +69,8 @@ export class UsersService {
         Password: hashedPassword,
         Phone: userData.Phone || null,
         BirthDate: birthDate,
-        Role: {
-          connect: { IDRoles: roleId }
-        },
-        JobTitle: {
-          connect: { IDJob_title: managerJob.IDJob_title }
-        }
+        IDRoles: roleId,
+        IDJob_title: managerJob.IDJob_title
       },
       include: { Role: true },
     });
@@ -94,6 +90,22 @@ export class UsersService {
   }
 
   async update(id: number, userData: any) {
+    // Если передана роль по имени, находим ID роли
+    if (userData.IDRoles && typeof userData.IDRoles === 'string') {
+      const role = await this.prisma.roles.findFirst({
+        where: { Name: userData.IDRoles }
+      });
+      if (role) {
+        userData.IDRoles = role.IDRoles;
+      }
+    }
+
+    // Hash password if provided
+    if (userData.Password) {
+      const bcrypt = require('bcryptjs');
+      userData.Password = await bcrypt.hash(userData.Password, 10);
+    }
+
     return this.prisma.users.update({
       where: { IDUsers: id },
       data: userData,
@@ -102,6 +114,11 @@ export class UsersService {
   }
 
   async remove(id: number) {
+    // Delete user's orders first to avoid foreign key constraint
+    await this.prisma.orders.deleteMany({
+      where: { IDUsers: id },
+    });
+    
     return this.prisma.users.delete({
       where: { IDUsers: id },
     });

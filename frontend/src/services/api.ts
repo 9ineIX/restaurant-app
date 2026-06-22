@@ -20,7 +20,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    // Don't redirect on login/register 401 errors
+    const isAuthEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
+    
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
@@ -39,6 +42,16 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    
+    // Extract error message from response for better error handling
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      error.message = error.response.data.error;
+    } else if (typeof error.response?.data === 'string') {
+      error.message = error.response.data;
+    }
+    
     return Promise.reject(error);
   }
 );

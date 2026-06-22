@@ -19,6 +19,7 @@ export const IngredientForm: React.FC<IngredientFormProps> = ({ onSubmit, onCanc
   });
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -37,62 +38,106 @@ export const IngredientForm: React.FC<IngredientFormProps> = ({ onSubmit, onCanc
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.Name.trim()) {
+      newErrors.Name = 'Название обязательно';
+    }
+    
+    if (!formData.Price || parseFloat(formData.Price) <= 0) {
+      newErrors.Price = 'Цена должна быть больше 0';
+    }
+    
+    if (formData.IDIngredients_categories === 0) {
+      newErrors.IDIngredients_categories = 'Выберите категорию';
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
     onSubmit({
       ...formData,
       Price: parseFloat(formData.Price)
     });
   };
 
+  const getInputStyle = (fieldName?: string) => ({
+    width: '100%',
+    padding: '12px 16px',
+    border: errors[fieldName || ''] ? '1px solid #dc2626' : '1px solid #e9ecef',
+    borderRadius: '8px',
+    fontSize: '16px',
+    transition: 'all 0.2s ease',
+    background: '#ffffff'
+  });
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#2c3e50',
+    marginBottom: '8px'
+  };
+
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6">Загрузка категорий...</div>
+      <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+        <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px' }}>
+          Загрузка категорий...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-4">Добавить ингредиент</h3>
+    <div style={{ padding: '32px', maxWidth: '600px', width: '100%' }}>
+      <h3 style={{
+        fontSize: '24px',
+        fontWeight: '700',
+        color: '#2c3e50',
+        marginBottom: '24px',
+        textAlign: 'center'
+      }}>Добавить ингредиент</h3>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Название
-            </label>
+            <label style={labelStyle}>Название</label>
             <input
               type="text"
               required
               value={formData.Name}
               onChange={(e) => setFormData({...formData, Name: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={getInputStyle('Name')}
+              placeholder="Название ингредиента"
             />
+            {errors.Name && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.Name}</div>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Цена (₽)
-            </label>
+            <label style={labelStyle}>Цена (₽)</label>
             <input
               type="number"
               step="0.01"
               required
               value={formData.Price}
               onChange={(e) => setFormData({...formData, Price: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={getInputStyle('Price')}
+              placeholder="0.00"
             />
+            {errors.Price && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.Price}</div>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Категория
-            </label>
+            <label style={labelStyle}>Категория</label>
             <select
               required
               value={formData.IDIngredients_categories}
               onChange={(e) => setFormData({...formData, IDIngredients_categories: parseInt(e.target.value) || 0})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={getInputStyle('IDIngredients_categories')}
             >
               <option value="">Выберите категорию</option>
               {categories.map(category => (
@@ -101,25 +146,43 @@ export const IngredientForm: React.FC<IngredientFormProps> = ({ onSubmit, onCanc
                 </option>
               ))}
             </select>
+            {errors.IDIngredients_categories && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.IDIngredients_categories}</div>}
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              style={{
+                padding: '12px 24px',
+                border: '1px solid #e9ecef',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#6c757d',
+                background: 'transparent',
+                cursor: 'pointer'
+              }}
             >
               Отмена
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              style={{
+                padding: '12px 24px',
+                background: '#ff6b35',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
             >
               Добавить
             </button>
           </div>
         </form>
-      </div>
     </div>
   );
 };

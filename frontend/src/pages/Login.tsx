@@ -10,11 +10,19 @@ export const Login: React.FC = () => {
     Phone: '',
     BirthDate: '',
   });
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const { login, register, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
     
     // Отправляем поля с правильными именами для backend
     const submitData = {
@@ -36,51 +44,105 @@ export const Login: React.FC = () => {
         console.log('Attempting register...', submitData);
         await register(submitData);
         console.log('Register successful!');
-        alert('Регистрация прошла успешно! Теперь вы можете войти.');
+        setSuccessMessage('Регистрация прошла успешно! Теперь вы можете войти.');
+        setErrorMessage('');
         // Переключаемся на форму входа после успешной регистрации
-        setIsLogin(true);
-        // Очищаем поля формы
-        setFormData({
-          email: submitData.Email,
-          password: '',
-          FIO: '',
-          Phone: '',
-          BirthDate: '',
-        });
+        setTimeout(() => {
+          setIsLogin(true);
+          // Очищаем поля формы
+          setFormData({
+            email: submitData.Email,
+            password: '',
+            FIO: '',
+            Phone: '',
+            BirthDate: '',
+          });
+          setErrors({});
+        }, 2000);
       }
     } catch (error) {
       console.error('Auth error:', error);
-      alert(`Ошибка авторизации: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      setErrorMessage(`Ошибка авторизации: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      setSuccessMessage('');
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     console.log('Field changed:', { name, value });
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Phone validation: only allow + and digits
+    if (name === 'Phone') {
+      const phoneValue = value.replace(/[^+\d]/g, '');
+      setFormData(prev => ({
+        ...prev,
+        [name]: phoneValue,
+      }));
+      
+      // Clear error when user starts typing
+      if (errors.Phone) {
+        setErrors(prev => ({ ...prev, Phone: '' }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    if (!isLogin) {
+      if (!formData.FIO.trim()) {
+        newErrors.FIO = 'ФИО обязательно';
+      }
+      if (!formData.Phone.trim()) {
+        newErrors.Phone = 'Телефон обязателен';
+      } else if (!/^\+\d{10,15}$/.test(formData.Phone)) {
+        newErrors.Phone = 'Телефон должен начинаться с + и содержать 10-15 цифр';
+      }
+      if (!formData.BirthDate) {
+        newErrors.BirthDate = 'Дата рождения обязательна';
+      }
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email обязателен';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Некорректный email';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Пароль обязателен';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Пароль должен содержать минимум 6 символов';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   return (
-    <div className="login-container" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div className="login-card" style={{
-        maxWidth: '480px',
-        width: '100%',
-        background: 'var(--surface)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '48px',
-        boxShadow: 'var(--shadow-lg)',
-        backdropFilter: 'blur(10px)'
+    <>
+      <div className="login-container" style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '20px'
       }}>
+        <div className="login-card" style={{
+          maxWidth: '480px',
+          width: '100%',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '48px',
+          boxShadow: 'var(--shadow-lg)',
+          backdropFilter: 'blur(10px)'
+        }}>
         <div className="login-header" style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div className="logo" style={{
             width: '80px',
@@ -115,6 +177,42 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
+        {/* Success notification */}
+        {successMessage && (
+          <div style={{
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            color: 'white',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            animation: 'slideIn 0.3s ease'
+          }}>
+            <span style={{ fontSize: '20px' }}>✓</span>
+            <span style={{ fontSize: '14px', fontWeight: '500' }}>{successMessage}</span>
+          </div>
+        )}
+
+        {/* Error notification */}
+        {errorMessage && (
+          <div style={{
+            background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+            color: 'white',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            animation: 'slideIn 0.3s ease'
+          }}>
+            <span style={{ fontSize: '20px' }}>✕</span>
+            <span style={{ fontSize: '14px', fontWeight: '500' }}>{errorMessage}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="form-group">
             <label htmlFor="email" style={{
@@ -136,7 +234,7 @@ export const Login: React.FC = () => {
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                border: '1px solid var(--border-color)',
+                border: errors.email ? '1px solid #dc2626' : '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '16px',
                 transition: 'all 0.2s ease',
@@ -144,6 +242,7 @@ export const Login: React.FC = () => {
               }}
               placeholder="email@example.com"
             />
+            {errors.email && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.email}</div>}
           </div>
 
           <div className="form-group">
@@ -166,7 +265,7 @@ export const Login: React.FC = () => {
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                border: '1px solid var(--border-color)',
+                border: errors.password ? '1px solid #dc2626' : '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '16px',
                 transition: 'all 0.2s ease',
@@ -174,6 +273,7 @@ export const Login: React.FC = () => {
               }}
               placeholder="Пароль"
             />
+            {errors.password && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.password}</div>}
           </div>
 
           {!isLogin && (
@@ -198,7 +298,7 @@ export const Login: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid var(--border-color)',
+                    border: errors.FIO ? '1px solid #dc2626' : '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '16px',
                     transition: 'all 0.2s ease',
@@ -206,6 +306,7 @@ export const Login: React.FC = () => {
                   }}
                   placeholder="Иванов Иван Иванович"
                 />
+                {errors.FIO && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.FIO}</div>}
               </div>
 
               <div className="form-group">
@@ -228,14 +329,15 @@ export const Login: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid var(--border-color)',
+                    border: errors.Phone ? '1px solid #dc2626' : '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '16px',
                     transition: 'all 0.2s ease',
                     background: 'var(--surface)'
                   }}
-                  placeholder="+7 (999) 123-45-67"
+                  placeholder="+79991234567"
                 />
+                {errors.Phone && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.Phone}</div>}
               </div>
 
               <div className="form-group">
@@ -258,13 +360,14 @@ export const Login: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid var(--border-color)',
+                    border: errors.BirthDate ? '1px solid #dc2626' : '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '16px',
                     transition: 'all 0.2s ease',
                     background: 'var(--surface)'
                   }}
                 />
+                {errors.BirthDate && <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{errors.BirthDate}</div>}
               </div>
             </>
           )}
@@ -304,5 +407,19 @@ export const Login: React.FC = () => {
         </form>
       </div>
     </div>
+    
+    <style>{`
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `}</style>
+    </>
   );
 };

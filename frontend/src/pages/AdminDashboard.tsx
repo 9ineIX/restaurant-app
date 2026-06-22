@@ -15,6 +15,7 @@ export const AdminDashboard: React.FC = () => {
   const [showUserForm, setShowUserForm] = useState(false);
   const [showIngredientForm, setShowIngredientForm] = useState(false);
   const [showDishForm, setShowDishForm] = useState(false);
+  const [editRoleModal, setEditRoleModal] = useState<{ open: boolean; userId: number; currentRole: string; roleId: number; email: string; password: string; fio: string; phone: string; birthDate: string }>({ open: false, userId: 0, currentRole: '', roleId: 1, email: '', password: '', fio: '', phone: '', birthDate: '' });
   const queryClient = useQueryClient();
 
   // Запросы данных
@@ -33,10 +34,19 @@ export const AdminDashboard: React.FC = () => {
     queryFn: () => ingredientsApi.getAll().then(res => res.data),
   });
 
-  const { data: orders, isLoading, refetch } = useQuery<Order[]>({
+  const { data: orders, refetch, isLoading: ordersLoading, error: ordersError } = useQuery<Order[]>({
     queryKey: ['all-orders'],
-    queryFn: () => ordersApi.getAllOrders().then(res => res.data),
-    refetchInterval: 3000, 
+    queryFn: () => {
+      console.log('Fetching all orders...');
+      return ordersApi.getAllOrders().then(res => {
+        console.log('Orders fetched:', res.data);
+        return res.data;
+      }).catch(err => {
+        console.error('Error fetching orders:', err);
+        throw err;
+      });
+    },
+    refetchInterval: 3000,
   });
 
   // Мутации для CRUD операций
@@ -113,74 +123,173 @@ export const AdminDashboard: React.FC = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['all-orders'] }),
   });
 
+  // Состояния для модальных окон редактирования
+  const [editDishModal, setEditDishModal] = useState<{ open: boolean; dish?: Dish; price: string; name: string; description: string }>({ open: false, price: '', name: '', description: '' });
+  const [editIngredientModal, setEditIngredientModal] = useState<{ open: boolean; ingredient?: Ingredient; price: string; name: string }>({ open: false, price: '', name: '' });
+
+  // Стили (должны быть ДО использования)
+  const headerStyle = {
+    background: '#ffffff',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    borderBottom: '1px solid #e9ecef'
+  };
+
+  const cardStyle = {
+    background: '#ffffff',
+    borderRadius: '16px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden'
+  };
+
+  const tabButtonStyle = (isActive: boolean) => ({
+    padding: '12px 16px',
+    fontSize: '14px',
+    fontWeight: 500,
+    border: 'none',
+    borderBottom: `2px solid ${isActive ? '#ff6b35' : 'transparent'}`,
+    color: isActive ? '#ff6b35' : '#6c757d',
+    background: 'transparent',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  });
+
+  const tableStyle = {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    background: '#ffffff',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    borderSpacing: '0'
+  };
+
+  const tableHeaderStyle = {
+    background: '#f8f9fa',
+    padding: '14px 16px',
+    textAlign: 'left' as const,
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#495057',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    borderBottom: '2px solid #dee2e6',
+    borderRight: '1px solid #dee2e6'
+  };
+
+  const tableCellStyle = {
+    padding: '14px 16px',
+    fontSize: '14px',
+    color: '#212529',
+    borderBottom: '1px solid #dee2e6',
+    borderRight: '1px solid #dee2e6',
+    background: '#ffffff'
+  };
+
+  const actionButtonStyle = (color: string) => ({
+    color: color,
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 500,
+    marginRight: '16px'
+  });
+
+  const addButtonStyle = {
+    padding: '10px 20px',
+    background: '#ff6b35',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  };
+
   const renderUsersTab = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Пользователи</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#2c3e50' }}>Пользователи</h2>
         <button
           onClick={() => setShowUserForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          style={addButtonStyle}
         >
           Добавить пользователя
         </button>
       </div>
       
       {showUserForm && (
-        <UserForm
-          onSubmit={(userData) => {
-            createUserMutation.mutate(userData);
-            setShowUserForm(false);
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
           }}
-          onCancel={() => setShowUserForm(false)}
-        />
+          onClick={() => setShowUserForm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+              margin: '20px'
+            }}
+          >
+            <UserForm
+              onSubmit={(userData) => {
+                createUserMutation.mutate(userData);
+                setShowUserForm(false);
+              }}
+              onCancel={() => setShowUserForm(false)}
+            />
+          </div>
+        </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div style={cardStyle}>
+        <table style={tableStyle}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ФИО
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Роль
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Действия
-              </th>
+              <th style={tableHeaderStyle}>ID</th>
+              <th style={tableHeaderStyle}>ФИО</th>
+              <th style={tableHeaderStyle}>Email</th>
+              <th style={tableHeaderStyle}>Роль</th>
+              <th style={tableHeaderStyle}>Действия</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {users?.map(user => (
               <tr key={user.IDUsers}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {user.IDUsers}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {user.FIO}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {user.Email}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {user.Role?.Name || user.role?.Name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td style={tableCellStyle}>{user.IDUsers}</td>
+                <td style={tableCellStyle}>{user.FIO}</td>
+                <td style={tableCellStyle}>{user.Email}</td>
+                <td style={tableCellStyle}>{user.Role?.Name || user.role?.Name}</td>
+                <td style={tableCellStyle}>
                   <button
                     onClick={() => {
                       const currentRole = user.Role?.Name || user.role?.Name || '';
-                      const newRole = prompt('Новая роль:', currentRole);
-                      if (newRole) {
-                        updateUserMutation.mutate({ id: user.IDUsers, data: { role: newRole } });
-                      }
+                      const roleId = user.Role?.IDRoles || user.role?.IDRoles || 1;
+                      setEditRoleModal({ 
+                        open: true, 
+                        userId: user.IDUsers, 
+                        currentRole, 
+                        roleId,
+                        email: user.Email || '',
+                        password: '',
+                        fio: user.FIO || '',
+                        phone: user.Phone || '',
+                        birthDate: user.BirthDate || ''
+                      });
                     }}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
+                    style={actionButtonStyle('#4f46e5')}
                   >
                     Изменить
                   </button>
@@ -190,7 +299,7 @@ export const AdminDashboard: React.FC = () => {
                         deleteUserMutation.mutate(user.IDUsers);
                       }
                     }}
-                    className="text-red-600 hover:text-red-900"
+                    style={actionButtonStyle('#dc2626')}
                   >
                     Удалить
                   </button>
@@ -200,171 +309,516 @@ export const AdminDashboard: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {editRoleModal.open && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => setEditRoleModal({ open: false, userId: 0, currentRole: '', roleId: 1, email: '', password: '', fio: '', phone: '', birthDate: '' })}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '400px',
+              width: '100%',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+              margin: '20px',
+              padding: '32px'
+            }}
+          >
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#2c3e50',
+              marginBottom: '24px',
+              textAlign: 'center'
+            }}>Изменить пользователя</h3>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>Email</label>
+              <input
+                type="email"
+                value={editRoleModal.email}
+                onChange={(e) => setEditRoleModal({ ...editRoleModal, email: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: '#ffffff'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>Новый пароль (оставьте пустым, чтобы не менять)</label>
+              <input
+                type="password"
+                value={editRoleModal.password}
+                onChange={(e) => setEditRoleModal({ ...editRoleModal, password: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: '#ffffff'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>ФИО</label>
+              <input
+                type="text"
+                value={editRoleModal.fio}
+                onChange={(e) => setEditRoleModal({ ...editRoleModal, fio: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: '#ffffff'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>Телефон</label>
+              <input
+                type="text"
+                value={editRoleModal.phone}
+                onChange={(e) => setEditRoleModal({ ...editRoleModal, phone: e.target.value.replace(/[^+\d]/g, '') })}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: '#ffffff'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>Дата рождения</label>
+              <input
+                type="date"
+                value={editRoleModal.birthDate}
+                onChange={(e) => setEditRoleModal({ ...editRoleModal, birthDate: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: '#ffffff'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>Текущая роль: {editRoleModal.currentRole}</label>
+
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#2c3e50',
+                marginBottom: '8px'
+              }}>Новая роль:</label>
+
+              <select
+                value={editRoleModal.roleId}
+                onChange={(e) => setEditRoleModal({ ...editRoleModal, roleId: parseInt(e.target.value) })}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: '#ffffff'
+                }}
+              >
+                <option value={1}>Клиент</option>
+                <option value={2}>Сотрудник</option>
+                <option value={3}>Администратор</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => setEditRoleModal({ open: false, userId: 0, currentRole: '', roleId: 1, email: '', password: '', fio: '', phone: '', birthDate: '' })}
+                style={{
+                  padding: '12px 24px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  color: '#6c757d',
+                  background: 'transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => {
+                  const updateData: any = { IDRoles: editRoleModal.roleId };
+                  if (editRoleModal.email) updateData.Email = editRoleModal.email;
+                  if (editRoleModal.password) updateData.Password = editRoleModal.password;
+                  if (editRoleModal.fio) updateData.FIO = editRoleModal.fio;
+                  if (editRoleModal.phone) updateData.Phone = editRoleModal.phone;
+                  if (editRoleModal.birthDate) updateData.BirthDate = new Date(editRoleModal.birthDate);
+                  
+                  updateUserMutation.mutate({
+                    id: editRoleModal.userId,
+                    data: updateData
+                  });
+                  setEditRoleModal({ open: false, userId: 0, currentRole: '', roleId: 1, email: '', password: '', fio: '', phone: '', birthDate: '' });
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#ff6b35',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   const renderDishesTab = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Блюда</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#2c3e50' }}>Блюда</h2>
         <button
           onClick={() => setShowDishForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          style={addButtonStyle}
         >
           Добавить блюдо
         </button>
       </div>
       
       {showDishForm && (
-        <DishForm
-          onSubmit={(dishData) => {
-            createDishMutation.mutate(dishData);
-            setShowDishForm(false);
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
           }}
-          onCancel={() => setShowDishForm(false)}
-        />
+          onClick={() => setShowDishForm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+              margin: '20px'
+            }}
+          >
+            <DishForm
+              onSubmit={(dishData) => {
+                createDishMutation.mutate(dishData);
+                setShowDishForm(false);
+              }}
+              onCancel={() => setShowDishForm(false)}
+            />
+          </div>
+        </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Название
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Цена
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Описание
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Действия
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {dishes?.map(dish => (
-              <tr key={dish.IDDishes}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {dish.IDDishes}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {dish.Name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {dish.Price} ₽
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {dish.Description}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => {
-                      const newPrice = prompt('Новая цена:', dish.Price.toString());
-                      if (newPrice) {
-                        updateDishMutation.mutate({ 
-                          id: dish.IDDishes, 
-                          data: { Price: parseFloat(newPrice) } 
-                        });
+      <div className="admin-table-container">
+  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <thead>
+      <tr>
+        <th className="admin-table-header">ID</th>
+        <th className="admin-table-header">Название</th>
+        <th className="admin-table-header">Цена</th>
+        <th className="admin-table-header">Описание</th>
+        <th className="admin-table-header">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {dishes?.map(dish => (
+        <tr key={dish.IDDishes}>
+          <td className="admin-table-cell">{dish.IDDishes}</td>
+          <td className="admin-table-cell">{dish.Name}</td>
+          <td className="admin-table-cell">{dish.Price} ₽</td>
+          <td className="admin-table-cell">{dish.Description}</td>
+          <td className="admin-table-cell">
+            <button
+              onClick={() => setEditDishModal({ open: true, dish, price: dish.Price.toString(), name: dish.Name, description: dish.Description || '' })}
+              style={actionButtonStyle('#4f46e5')}
+            >
+              Изменить
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('Удалить блюдо?')) {
+                  deleteDishMutation.mutate(dish.IDDishes);
+                }
+              }}
+              style={actionButtonStyle('#dc2626')}
+            >
+              Удалить
+            </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+      {/* Модальное окно редактирования цены блюда */}
+      {editDishModal.open && editDishModal.dish && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div style={{
+            maxWidth: '400px',
+            width: '100%',
+            background: '#ffffff',
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+            margin: '20px'
+          }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#2c3e50',
+              marginBottom: '8px',
+              textAlign: 'center'
+            }}>Изменить блюдо</h3>
+
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#2c3e50', marginBottom: '8px' }}>
+              Название
+            </label>
+            <input
+              type="text"
+              value={editDishModal.name}
+              onChange={(e) => setEditDishModal({ ...editDishModal, name: e.target.value })}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e9ecef', borderRadius: '8px', fontSize: '16px', marginBottom: '20px' }}
+              placeholder="Название блюда"
+            />
+
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#2c3e50', marginBottom: '8px' }}>
+              Описание
+            </label>
+            <textarea
+              value={editDishModal.description}
+              onChange={(e) => setEditDishModal({ ...editDishModal, description: e.target.value })}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e9ecef', borderRadius: '8px', fontSize: '16px', marginBottom: '20px', minHeight: '80px' }}
+              placeholder="Описание блюда"
+            />
+
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#2c3e50', marginBottom: '8px' }}>
+              Цена (₽)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={editDishModal.price}
+              onChange={(e) => setEditDishModal({ ...editDishModal, price: e.target.value })}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e9ecef', borderRadius: '8px', fontSize: '16px', marginBottom: '20px' }}
+              placeholder="0.00"
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => setEditDishModal({ open: false, price: '', name: '', description: '' })}
+                style={{
+                  padding: '12px 24px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  color: '#6c757d',
+                  background: 'transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => {
+                  if (editDishModal.price) {
+                    updateDishMutation.mutate({
+                      id: editDishModal.dish!.IDDishes,
+                      data: { 
+                        Price: parseFloat(editDishModal.price),
+                        Name: editDishModal.name,
+                        Description: editDishModal.description
                       }
-                    }}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                  >
-                    Изменить
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm('Удалить блюдо?')) {
-                        deleteDishMutation.mutate(dish.IDDishes);
-                      }
-                    }}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Удалить
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    });
+                    setEditDishModal({ open: false, price: '', name: '', description: '' });
+                  }
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#ff6b35',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   const renderIngredientsTab = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Ингредиенты</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#2c3e50' }}>Ингредиенты</h2>
         <button
           onClick={() => setShowIngredientForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          style={addButtonStyle}
         >
           Добавить ингредиент
         </button>
       </div>
       
       {showIngredientForm && (
-        <IngredientForm
-          onSubmit={(ingredientData) => {
-            createIngredientMutation.mutate(ingredientData);
-            setShowIngredientForm(false);
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
           }}
-          onCancel={() => setShowIngredientForm(false)}
-        />
+          onClick={() => setShowIngredientForm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+              margin: '20px'
+            }}
+          >
+            <IngredientForm
+              onSubmit={(ingredientData) => {
+                createIngredientMutation.mutate(ingredientData);
+                setShowIngredientForm(false);
+              }}
+              onCancel={() => setShowIngredientForm(false)}
+            />
+          </div>
+        </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div style={cardStyle}>
+        <table style={tableStyle}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Название
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Цена
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Категория
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Действия
-              </th>
+              <th style={tableHeaderStyle}>ID</th>
+              <th style={tableHeaderStyle}>Название</th>
+              <th style={tableHeaderStyle}>Цена</th>
+              <th style={tableHeaderStyle}>Категория</th>
+              <th style={tableHeaderStyle}>Действия</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {ingredients?.map(ingredient => (
               <tr key={ingredient.IDIngredients}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {ingredient.IDIngredients}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {ingredient.Name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {ingredient.Price} ₽
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {ingredient.Category?.Name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td style={tableCellStyle}>{ingredient.IDIngredients}</td>
+                <td style={tableCellStyle}>{ingredient.Name}</td>
+                <td style={tableCellStyle}>{ingredient.Price} ₽</td>
+                <td style={tableCellStyle}>{ingredient.Category?.Name}</td>
+                <td style={tableCellStyle}>
                   <button
-                    onClick={() => {
-                      const newPrice = prompt('Новая цена:', ingredient.Price.toString());
-                      if (newPrice) {
-                        updateIngredientMutation.mutate({ 
-                          id: ingredient.IDIngredients, 
-                          data: { Price: parseFloat(newPrice) } 
-                        });
-                      }
-                    }}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
+                    onClick={() => setEditIngredientModal({ open: true, ingredient, price: ingredient.Price.toString(), name: ingredient.Name })}
+                    style={actionButtonStyle('#4f46e5')}
                   >
                     Изменить
                   </button>
@@ -374,7 +828,7 @@ export const AdminDashboard: React.FC = () => {
                         deleteIngredientMutation.mutate(ingredient.IDIngredients);
                       }
                     }}
-                    className="text-red-600 hover:text-red-900"
+                    style={actionButtonStyle('#dc2626')}
                   >
                     Удалить
                   </button>
@@ -384,125 +838,262 @@ export const AdminDashboard: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Модальное окно редактирования цены ингредиента */}
+      {editIngredientModal.open && editIngredientModal.ingredient && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div style={{
+            maxWidth: '400px',
+            width: '100%',
+            background: '#ffffff',
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+            margin: '20px'
+          }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#2c3e50',
+              marginBottom: '8px',
+              textAlign: 'center'
+            }}>Изменить ингредиент</h3>
+
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#2c3e50', marginBottom: '8px' }}>
+              Название
+            </label>
+            <input
+              type="text"
+              value={editIngredientModal.name}
+              onChange={(e) => setEditIngredientModal({ ...editIngredientModal, name: e.target.value })}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e9ecef', borderRadius: '8px', fontSize: '16px', marginBottom: '20px' }}
+              placeholder="Название ингредиента"
+            />
+
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#2c3e50', marginBottom: '8px' }}>
+              Цена (₽)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={editIngredientModal.price}
+              onChange={(e) => setEditIngredientModal({ ...editIngredientModal, price: e.target.value })}
+              style={{ width: '100%', padding: '12px 16px', border: '1px solid #e9ecef', borderRadius: '8px', fontSize: '16px', marginBottom: '20px' }}
+              placeholder="0.00"
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => setEditIngredientModal({ open: false, price: '', name: '' })}
+                style={{
+                  padding: '12px 24px',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  color: '#6c757d',
+                  background: 'transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => {
+                  if (editIngredientModal.price) {
+                    updateIngredientMutation.mutate({
+                      id: editIngredientModal.ingredient!.IDIngredients,
+                      data: { 
+                        Price: parseFloat(editIngredientModal.price),
+                        Name: editIngredientModal.name
+                      }
+                    });
+                    setEditIngredientModal({ open: false, price: '', name: '' });
+                  }
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#ff6b35',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   const renderOrdersTab = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Заказы</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#2c3e50' }}>Заказы</h2>
         <button
           onClick={() => refetch()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          style={addButtonStyle}
         >
           Обновить
         </button>
       </div>
       
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      {ordersError && (
+        <div style={{
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '16px'
+        }}>
+          Ошибка загрузки заказов: {ordersError instanceof Error ? ordersError.message : 'Неизвестная ошибка'}
+        </div>
+      )}
+      
+      {ordersLoading ? (
+        <div style={cardStyle}>
+          <p style={{ padding: '24px', textAlign: 'center', color: '#6c757d' }}>
+            Загрузка заказов...
+          </p>
+        </div>
+      ) : !orders || orders.length === 0 ? (
+        <div style={cardStyle}>
+          <p style={{ padding: '24px', textAlign: 'center', color: '#6c757d' }}>
+            Нет заказов для отображения
+          </p>
+        </div>
+      ) : (
+      <div style={cardStyle}>
+        <table style={tableStyle}>
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Клиент
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Блюда
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Сумма
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Статус
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Действия
-              </th>
+              <th style={tableHeaderStyle}>ID</th>
+              <th style={tableHeaderStyle}>Клиент</th>
+              <th style={tableHeaderStyle}>Блюда</th>
+              <th style={tableHeaderStyle}>Сумма</th>
+              <th style={tableHeaderStyle}>Статус</th>
+              <th style={tableHeaderStyle}>Действия</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {orders?.map(order => (
               <tr key={order.IDOrders}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  #{order.IDOrders}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {order.User?.FIO}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {order.Dishes?.map(dish => dish.Name).join(', ')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {order.Price} ₽
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    order.Status?.Name === 'Готов' ? 'bg-green-100 text-green-800' :
-                    order.Status?.Name === 'В обработке' ? 'bg-yellow-100 text-yellow-800' :
-                    order.Status?.Name === 'Создан' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+                <td style={tableCellStyle}>#{order.IDOrders}</td>
+                <td style={tableCellStyle}>{order.User?.FIO}</td>
+                <td style={tableCellStyle}>{order.Dishes?.map(dish => dish.Name).join(', ')}</td>
+                <td style={tableCellStyle}>{order.Price} ₽</td>
+                <td style={tableCellStyle}>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    ...(order.Status?.Name === 'Готов' ? { background: '#dcfce7', color: '#166534' } :
+                        order.Status?.Name === 'В обработке' ? { background: '#fef9c3', color: '#854d0e' } :
+                        order.Status?.Name === 'Создан' ? { background: '#dbeafe', color: '#1e40af' } :
+                        { background: '#f3f4f6', color: '#374151' })
+                  }}>
                     {order.Status?.Name}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => {
-                      const newStatus = prompt('Новый статус:', order.Status?.Name);
-                      if (newStatus) {
-                        const statusMap: { [key: string]: number } = {
-                          'Создан': 1,
-                          'В обработке': 2,
-                          'Готов': 3,
-                          'Выдан': 4
-                        };
-                        const statusId = statusMap[newStatus] || 1;
-                        updateOrderMutation.mutate({ id: order.IDOrders, data: { statusId } });
-                      }
-                    }}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                  >
-                    Изменить
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm('Удалить заказ?')) {
-                        deleteOrderMutation.mutate(order.IDOrders);
-                      }
-                    }}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Удалить
-                  </button>
+                <td style={tableCellStyle}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {order.Status?.Name === 'Создан' && (
+                      <button
+                        onClick={() => updateOrderMutation.mutate({ id: order.IDOrders, data: { statusId: 2 } })}
+                        style={{ ...actionButtonStyle('#f59e0b'), color: 'white', background: '#f59e0b' }}
+                      >
+                        В работу
+                      </button>
+                    )}
+                    {order.Status?.Name === 'В обработке' && (
+                      <button
+                        onClick={() => updateOrderMutation.mutate({ id: order.IDOrders, data: { statusId: 3 } })}
+                        style={{ ...actionButtonStyle('#10b981'), color: 'white', background: '#10b981' }}
+                      >
+                        Готов
+                      </button>
+                    )}
+                    {order.Status?.Name === 'Готов' && (
+                      <button
+                        onClick={() => updateOrderMutation.mutate({ id: order.IDOrders, data: { statusId: 4 } })}
+                        style={{ ...actionButtonStyle('#3b82f6'), color: 'white', background: '#3b82f6' }}
+                      >
+                        Выдан
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (confirm('Удалить заказ?')) {
+                          deleteOrderMutation.mutate(order.IDOrders);
+                        }
+                      }}
+                      style={actionButtonStyle('#dc2626')}
+                    >
+                      Удалить
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{
+      minHeight: '100vh',
+      background: '#f8f9fa',
+      paddingBottom: '32px'
+    }}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      <header style={headerStyle}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Панель администратора</h1>
-              <p className="text-sm text-gray-600">Управление системой</p>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0 }}>
+                Панель администратора
+              </h1>
+              <p style={{ fontSize: '14px', color: '#6c757d', margin: '4px 0 0 0' }}>
+                Управление системой
+              </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '14px', color: '#6c757d' }}>
                 {user?.FIO} • {user?.Role?.Name || user?.role?.Name}
               </span>
               <button
                 onClick={logout}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                style={{
+                  padding: '8px 16px',
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 Выйти
               </button>
@@ -512,10 +1103,16 @@ export const AdminDashboard: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+        <div style={{ 
+          background: '#ffffff', 
+          borderRadius: '16px', 
+          padding: '0 16px',
+          marginBottom: '24px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <nav style={{ display: 'flex', gap: '8px' }}>
             {[
               { id: 'users', label: 'Пользователи' },
               { id: 'dishes', label: 'Блюда' },
@@ -525,11 +1122,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                style={tabButtonStyle(activeTab === tab.id)}
               >
                 {tab.label}
               </button>

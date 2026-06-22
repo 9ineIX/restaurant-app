@@ -81,6 +81,15 @@ export class AuthService {
 
       const hashedPassword = await bcrypt.hash(userData.Password, 10);
 
+      // Check if user with this email already exists
+      const existingUser = await this.prisma.users.findUnique({
+        where: { Email: userData.Email }
+      });
+
+      if (existingUser) {
+        throw new Error('Пользователь с таким email уже существует');
+      }
+
       console.log('Creating user with data:', {
         FIO: userData.FIO,
         Email: userData.Email,
