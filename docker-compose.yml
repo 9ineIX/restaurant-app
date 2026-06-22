@@ -1,4 +1,16 @@
 services:
+
+  prisma-migrate:
+  build: ./backend
+  command: npx prisma migrate deploy
+  environment:
+    - DATABASE_URL="postgresql://postgres:password@localhost:5433/restaurant_db"
+  depends_on:
+    -postgres
+  networks:
+    - restaurant-network
+
+
   postgres:
     image: postgres:15-alpine
     container_name: restaurant-postgres
